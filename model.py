@@ -84,7 +84,7 @@ def optimize_agent(trial):
         env.close()
 
         SAVE_PATH = os.path.join(OPT_DIR, 'trial_{}_best_model'.format(trial.number)) # Saved to our path OPT_DIR, and then formatted name such that trial number is put in place of {}
-        model.save(SAVE_PATH) # IMP: Saves our model
+        model.save(SAVE_PATH, include_env=True) # IMP: Saves our model. Include env includes our obs/action space for later reloading the model.
 
         if VERBOSE:
             print(f" Trial: {trial.number + 1}")
@@ -99,8 +99,15 @@ def optimize_agent(trial):
         return -1000 # give placeholder value so that entire loop doenst break in case of one or two errors.
 
 if __name__ == "__main__": #Wrapped in this loop so that it runs only when this file is executed....this is done to safely extract study to other files like train.py
+    
+    # Save study persistently to disk
+    storage = optuna.storages.RDBStorage(
+        url="sqlite:///optuna_study.db",  # SQLite file
+        engine_kwargs={"connect_args": {"timeout": 10}}
+    )
+    
     # Creating the experiment (?)
-    study = optuna.create_study(direction='maximize') # It is important to set direction to MAXIMIZE if we want to return positive mean rewards, if not then we must return negative mean rewards (why?)
+    study = optuna.create_study(storage=storage, study_name="streetfighter", direction='maximize', load_if_exists=True) # It is important to set direction to MAXIMIZE if we want to return positive mean rewards, if not then we must return negative mean rewards (why?)
 
     # Running the study through our optimize agent function, where n_trials means HOW MANY DIFFERENT SETS of hyperparams we will be testing using optuna, and n_jobs specifies how many PARALLEL ENVIRONMENTS are used to train at the same time
 
@@ -111,7 +118,6 @@ if __name__ == "__main__": #Wrapped in this loop so that it runs only when this 
     study.optimize(optimize_agent, n_trials=N_TRIALS, n_jobs=1) 
     # study.optimize(optimize_agent, n_trials=100, n_jobs=1) #For the actual hardcore training....estimated to take more than 22 hours!
     
-    joblib.dump(study, 'ppo_study.pkl') # To access study in different files other than this one
 
 # TODO : 
 # We gotta finish this by tomorrow (9/5/25)
