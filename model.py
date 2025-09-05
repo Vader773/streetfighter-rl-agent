@@ -1,3 +1,29 @@
+# Default configuration
+CONFIG = {
+    'N_TRIALS': 10,
+    'TOTAL_TIMESTEPS': 30000,
+    'N_EVAL_EPISODES': 5,
+    'VERBOSE': True,
+    'LOG_DIR': './logs/',
+    'OPT_DIR': './opt/'
+}
+
+# Try to import external config to override defaults
+try:
+    from config import CONFIG as EXTERNAL_CONFIG
+    CONFIG.update(EXTERNAL_CONFIG)
+    print(f"📝 External configuration loaded and merged!")
+except ImportError:
+    print(f"📝 Using default configuration")
+
+# Extract variables for backward compatibility
+N_TRIALS = CONFIG['N_TRIALS']
+TOTAL_TIMESTEPS = CONFIG['TOTAL_TIMESTEPS']
+N_EVAL_EPISODES = CONFIG['N_EVAL_EPISODES']
+VERBOSE = CONFIG['VERBOSE']
+LOG_DIR = CONFIG['LOG_DIR']
+OPT_DIR = CONFIG['OPT_DIR']
+
 import optuna # optimization import which optimizes hyperparams and trains at the same time
 from stable_baselines3 import PPO # Importing Proximal Policy Optimization (PPO) algorithm for our model
 from stable_baselines3.common.evaluation import evaluate_policy # This helps us evaluate our model during hyperparam tuning to find the best one
@@ -6,10 +32,8 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack # This h
 from setup_env import StreetFighter
 import os
 import traceback
+import joblib
 
-
-LOG_DIR = './logs/'
-OPT_DIR = './opt/'
 
 #---------FUNCTIONS------------
 
@@ -27,6 +51,9 @@ def optimize_ppo(trial):
 # Function to run a training loop and return mean reward values
 def optimize_agent(trial):
     try:
+        if VERBOSE:
+            print(f"\nStarting Trial {trial.number + 1}/{N_TRIALS}") # Cos trail number will be 0 initially so its a bit confusing
+        
         model_params = optimize_ppo(trial)
 
         # Creating environment
@@ -44,17 +71,25 @@ def optimize_agent(trial):
         and THE MOST IMPORTANT BIT, we are unpacking the param values from optuna that we get in the above function and passing it while creating the ppo model as its params."""
 
         model = PPO('CnnPolicy', env, tensorboard_log=LOG_DIR, verbose=0, **model_params) 
-        model.learn(total_timesteps=30000) # For a quick test run
-        # model.learn(total_timestamps=100000) # How much to train the model....100k is optimum but takes a shit ton of time so gotta migrate to kaggle for that ig
+
+        print(f"Training for {TOTAL_TIMESTEPS} timesteps")
+
+        model.learn(total_timesteps=TOTAL_TIMESTEPS) #The model will train for timesteps mentioned in config
 
         #---------------EVALUATING THE MODEL-------------------
 
         # Here, "mean)reward, _" means we are UNPACKING the results we got from our policy before passing it to evaluate function
-        mean_reward, _ = evaluate_policy(model, env, n_eval_episodes=5)  # Evaluation of our model, through our environment, for n number of GAMES to play
+        print(f"Evaluating model for {N_EVAL_EPISODES} games.")
+        mean_reward, _ = evaluate_policy(model, env, n_eval_episodes=N_EVAL_EPISODES)  # Evaluation of our model, through our environment, for n number of GAMES to play
         env.close()
 
         SAVE_PATH = os.path.join(OPT_DIR, 'trial_{}_best_model'.format(trial.number)) # Saved to our path OPT_DIR, and then formatted name such that trial number is put in place of {}
         model.save(SAVE_PATH) # IMP: Saves our model
+
+        if VERBOSE:
+            print(f" Trial: {trial.number + 1}")
+            print(f" Mean Reward: {mean_reward:.2f}")
+            print(f" Model Saved: {SAVE_PATH}")
 
         return mean_reward
 
@@ -63,14 +98,20 @@ def optimize_agent(trial):
         traceback.print_exc()
         return -1000 # give placeholder value so that entire loop doenst break in case of one or two errors.
 
+if __name__ == "__main__": #Wrapped in this loop so that it runs only when this file is executed....this is done to safely extract study to other files like train.py
+    # Creating the experiment (?)
+    study = optuna.create_study(direction='maximize') # It is important to set direction to MAXIMIZE if we want to return positive mean rewards, if not then we must return negative mean rewards (why?)
 
-# Creating the experiment (?)
-study = optuna.create_study(direction='maximize') # It is important to set direction to MAXIMIZE if we want to return positive mean rewards, if not then we must return negative mean rewards (why?)
+    # Running the study through our optimize agent function, where n_trials means HOW MANY DIFFERENT SETS of hyperparams we will be testing using optuna, and n_jobs specifies how many PARALLEL ENVIRONMENTS are used to train at the same time
 
-# Running the study through our optimize agent function, where n_trials means HOW MANY DIFFERENT SETS of hyperparams we will be testing using optuna, and n_jobs specifies how many PARALLEL ENVIRONMENTS are used to train at the same time
-study.optimize(optimize_agent, n_trials=10, n_jobs=1) 
-# study.optimize(optimize_agent, n_trials=100, n_jobs=1) #For the actual hardcore training....estimated to take more than 22 hours!
+    print(f"Starting optimization with {N_TRIALS} trials:")
+    estimated_time = (TOTAL_TIMESTEPS * N_TRIALS) / 60000
+    print(f"Estimated time: {estimated_time:.0f}-{estimated_time*2:.0f} minutes")
 
+    study.optimize(optimize_agent, n_trials=N_TRIALS, n_jobs=1) 
+    # study.optimize(optimize_agent, n_trials=100, n_jobs=1) #For the actual hardcore training....estimated to take more than 22 hours!
+    
+    joblib.dump(study, 'ppo_study.pkl') # To access study in different files other than this one
 
-# TODO : REINSTALL cuda with gpu this time for gods sake and remember its a 2.7gb install!!
+# TODO : 
 # We gotta finish this by tomorrow (9/5/25)
