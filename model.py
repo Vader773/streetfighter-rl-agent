@@ -33,6 +33,7 @@ from setup_env import StreetFighter
 import os
 import traceback
 import joblib
+import shutil
 
 
 #---------FUNCTIONS------------
@@ -98,6 +99,14 @@ def optimize_agent(trial):
         traceback.print_exc()
         return -1000 # give placeholder value so that entire loop doenst break in case of one or two errors.
 
+SAVE_EVERY = 10  # save db every 2 trials (adjust as needed)
+# Code from chatgpt to save the study periodically
+def periodic_checkpoint(study, trial):
+    if trial.number % SAVE_EVERY == 0:
+        os.makedirs("/kaggle/working/opt", exist_ok=True)
+        shutil.copy2("optuna_study.db", "/kaggle/working/opt/optuna_study.db")
+        print(f"💾 [Optuna] Checkpoint saved after trial {trial.number}")
+        
 if __name__ == "__main__": #Wrapped in this loop so that it runs only when this file is executed....this is done to safely extract study to other files like train.py
     
     # Save study persistently to disk
@@ -115,7 +124,7 @@ if __name__ == "__main__": #Wrapped in this loop so that it runs only when this 
     estimated_time = (TOTAL_TIMESTEPS * N_TRIALS) / 60000
     print(f"Estimated time: {estimated_time:.0f}-{estimated_time*2:.0f} minutes")
 
-    study.optimize(optimize_agent, n_trials=N_TRIALS, n_jobs=1) 
+    study.optimize(optimize_agent, n_trials=N_TRIALS, n_jobs=1, callbacks=[periodic_checkpoint]) #Calling periodic checkpoint callback 
     # study.optimize(optimize_agent, n_trials=100, n_jobs=1) #For the actual hardcore training....estimated to take more than 22 hours!
     
 
