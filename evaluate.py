@@ -1,19 +1,117 @@
-from callback import TrainAndLoggingCallback, CHECKPOINT_DIR
-from stable_baselines3 import PPO # Importing Proximal Policy Optimization (PPO) algorithm for our model
-from stable_baselines3.common.evaluation import evaluate_policy # This helps us evaluate our model during hyperparam tuning to find the best one
-from stable_baselines3.common.monitor import Monitor # This helps us monitor our training and log results. Monitor is a great way to get logging mean episode/reward values from wrapped/multiple parallel streams.
-from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack # This helps us stack 4 frames together to give the ai a sense of time or trajectory.
+from stable_baselines3 import PPO
+from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack
 from setup_env import StreetFighter
 from model import LOG_DIR, OPT_DIR
+import optuna
+import warnings
+import zipfile
+import pickle
+
+# Suppress warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="stable_baselines3")
+warnings.filterwarnings("ignore", category=FutureWarning, module="stable_baselines3")
+
+def extract_hyperparameters_from_zip(model_path):
+    """Try to extract hyperparameters from the model zip file"""
+    try:
+        with zipfile.ZipFile(model_path, 'r') as zip_ref:
+            with zip_ref.open('data') as f:
+                # Try different ways to load the data
+                try:
+                    data = pickle.load(f)
+                    return {
+                        'learning_rate': data.get('learning_rate', 3e-4),
+                        'n_steps': data.get('n_steps', 2048),
+                        'gamma': data.get('gamma', 0.99),
+                        'clip_range': data.get('clip_range', 0.2),
+                        'gae_lambda': data.get('gae_lambda', 0.95)
+                    }
+                except:
+                    return None
+    except:
+        return None
+
+print("🎯 Smart loading of Kaggle model...")
 
 # Creating environment
 env = StreetFighter()
-env = Monitor(env, LOG_DIR) #Wrapped our custom env into monitor, which helps us properly recieve mean episode reward and shitmean episode length, and it logs those into the LOG_DIR folder.
-env = DummyVecEnv([lambda: env]) # What does this do??
-env = VecFrameStack(env, 4, channels_order='last') # From our env, we are gonna stack 4 diffrerent frames together, and as we had setup channels we can setup the order of those preprocessed 'channels' frames to last (i think?)
+env = Monitor(env, LOG_DIR)
+env = DummyVecEnv([lambda: env])
+env = VecFrameStack(env, 4, channels_order='last')
 
+model_path = './opt/trial_3_best_model.zip'
 
-model = PPO.load('train\best_100000_model.zip', env=env) # Load the TRAINED checkpoint
+# Strategy 1: Try to extract hyperparameters from the model file itself
+print("🔍 Attempting to extract hyperparameters from model file...")
+model_params = extract_hyperparameters_from_zip(model_path)
 
+if model_params:
+    print(f"✅ Extracted hyperparameters from model: {model_params}")
+else:
+    print("❌ Could not extract hyperparameters from model file")
+    
+    # Strategy 2: Try to load from Optuna study
+    try:
+        print("🔍 Attempting to load from Optuna study...")
+        storage = optuna.storages.RDBStorage(
+            url="sqlite:///optuna_study.db",
+            engine_kwargs={"connect_args": {"timeout": 10}}
+        )
+        study = optuna.load_study(study_name="streetfighter", storage=storage)
+        model_params = study.best_params.copy()
+        model_params['n_steps'] = 2304  # Adjust as needed
+        model_params['learning_rate'] = 5e-7  # Adjust as needed
+        print(f"✅ Loaded from Optuna study: {model_params}")
+    except Exception as e:
+        print(f"❌ Could not load from Optuna: {e}")
+        
+        # Strategy 3: Use fallback hyperparameters
+        print("🔄 Using fallback hyperparameters...")
+        model_params = {
+            'n_steps': 2304,
+            'gamma': 0.99,
+            'learning_rate': 5e-7,
+            'clip_range': 0.2,
+            'gae_lambda': 0.95
+        }
+        print(f"Using fallback: {model_params}")
 
-mean_reward, _ = evaluate_policy(model, env, n_eval_episodes=5, render=True )
+# Create model with proper hyperparameters
+print("🏗️ Creating model with hyperparameters...")
+model = PPO('CnnPolicy', env, verbose=0, **model_params)
+
+# Load weights
+print(f"📥 Loading weights from: {model_path}")
+try:
+    model.set_parameters(model_path)
+    print("✅ Weights loaded successfully!")
+except Exception as e:
+    print(f"❌ Failed to load weights: {e}")
+    exit(1)
+
+# Evaluate
+print("🎮 Starting evaluation...")
+try:
+    mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=5, render=True)
+    print(f"🏆 Mean reward: {mean_reward:.2f} ± {std_reward:.2f}")
+except Exception as e:
+    print(f"❌ Evaluation with rendering failed: {e}")
+    if "rendering" in str(e) or "classic_control" in str(e):
+        print("🔄 Rendering issue - evaluating without render...")
+        mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=5, render=False)
+        print(f"🏆 Mean reward (no render): {mean_reward:.2f} ± {std_reward:.2f}")
+        print("💡 To fix rendering: pip install 'gym[classic_control]' or use gym==0.21.0")
+    else:
+        raise e
+
+env.close()
+print("✅ Evaluation complete!")
+
+# Bonus: Show model info
+print("\n📊 Model Information:")
+print(f"   Policy: {model.policy}")
+print(f"   Environment: {model.env}")
+print(f"   Observation space: {model.observation_space}")
+print(f"   Action space: {model.action_space}")

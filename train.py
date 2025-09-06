@@ -11,7 +11,7 @@ import optuna
 import joblib
 
 
-callback = TrainAndLoggingCallback(check_freq=10000, save_path=CHECKPOINT_DIR) # Every 10k steps, we will save and log the model!
+callback = TrainAndLoggingCallback(check_freq=50000, save_path=CHECKPOINT_DIR) # Every 10k steps, we will save and log the model!
 
 # Copying the code from model.py
 
@@ -50,9 +50,8 @@ model = PPO('CnnPolicy', env, tensorboard_log=LOG_DIR, verbose=1, **model_params
 model.set_parameters(os.path.join(OPT_DIR, 'trial_3_best_model.zip'))
 
 # KEY CHANGE: Loading our pre-existing best model 
-# model.load(os.path.join(OPT_DIR, 'trial_2_best_model.zip'))
 
-model.learn(total_timesteps=100000, callback=callback) # Use callback that we created
+model.learn(total_timesteps=5000000, callback=callback) # Use callback that we created
 
 model.save(OPT_DIR, "train_3_final_model.zip")
 
