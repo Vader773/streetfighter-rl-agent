@@ -22,37 +22,38 @@ env = DummyVecEnv([lambda: env]) # What does this do??
 env = VecFrameStack(env, 4, channels_order='last') # From our env, we are gonna stack 4 diffrerent frames together, and as we had setup channels we can setup the order of those preprocessed 'channels' frames to last (i think?)
 
 
-# storage = optuna.storages.RDBStorage(
-#     url="sqlite:///optuna_study.db",
-#     engine_kwargs={"connect_args": {"timeout": 10}}
-# )
 
-# study = optuna.load_study(study_name="streetfighter", storage=storage)
+storage = optuna.storages.RDBStorage(
+    url="sqlite:///optuna_study.db",
+    engine_kwargs={"connect_args": {"timeout": 10}}
+)
 
-# # Access the best parameters
+study = optuna.load_study(study_name="streetfighter", storage=storage)
 
-study = joblib.load('ppo_study.pkl')
+# Access the best parameters
+
+# study = joblib.load('ppo_study.pkl')
 
 model_params = study.best_params
 print(model_params)
-model_params['n_steps'] = 6656 #ALWAYS set n_steps to closest multiple of 64
+model_params['n_steps'] = 2304 #ALWAYS set n_steps to closest multiple of 64
+model_params['learning_rate'] = 5e-7
 print(model_params)
 
 # WHEN WE ARE TRAINING PROPERLY, we will wanna do these:
 # model.learn(total_timesteps=5000000)
-# model_params['learning_rate'] = 5e-7
 
 model = PPO('CnnPolicy', env, tensorboard_log=LOG_DIR, verbose=1, **model_params) 
 
 
 # Load weights into this new model
-model.set_parameters(os.path.join(OPT_DIR, 'trial_2_best_model.zip'))
+model.set_parameters(os.path.join(OPT_DIR, 'trial_3_best_model.zip'))
 
 # KEY CHANGE: Loading our pre-existing best model 
 # model.load(os.path.join(OPT_DIR, 'trial_2_best_model.zip'))
 
 model.learn(total_timesteps=100000, callback=callback) # Use callback that we created
 
-model.save(OPT_DIR, "train_2_final_model.zip")
+model.save(OPT_DIR, "train_3_final_model.zip")
 
 # If we need tensorboard, open new terminal and do cd logs --> tensorboard --logdir=.
