@@ -1,9 +1,9 @@
-name: Update Kaggle Dataset
+name: Update Kaggle Dataset Manual
 
 on:
   push:
-    branches: [ main, master ]  # Trigger on pushes to main/master
-  workflow_dispatch:  # Allow manual triggering
+    branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   update-dataset:
@@ -12,13 +12,31 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     
-    - name: Update Kaggle Dataset
-      uses: ashishpatel26/kaggle-dataset-uploader@master
+    - name: Set up Python
+      uses: actions/setup-python@v4
       with:
-        kaggle-username: ${{ secrets.KAGGLE_USERNAME }}
-        kaggle-key: ${{ secrets.KAGGLE_KEY }}
-        dataset-slug: vader773/streetfighters-rl-code
-        dataset-folder: .
-        public: false
-        convert-to-csv: false
-        delete-old-versions: false
+        python-version: '3.8'
+    
+    - name: Install Kaggle API
+      run: |
+        pip install kaggle
+    
+    - name: Setup Kaggle credentials
+      run: |
+        mkdir -p ~/.kaggle
+        echo '{"username":"${{ secrets.KAGGLE_USERNAME }}","key":"${{ secrets.KAGGLE_KEY }}"}' > ~/.kaggle/kaggle.json
+        chmod 600 ~/.kaggle/kaggle.json
+    
+    - name: Create dataset metadata
+      run: |
+        cat > dataset-metadata.json << EOF
+        {
+          "title": "Streetfighters RL Code",
+          "id": "vader773/streetfighters-rl-code",
+          "licenses": [{"name": "CC0-1.0"}]
+        }
+        EOF
+    
+    - name: Update Kaggle dataset
+      run: |
+        kaggle datasets version -p . -m "Auto-update from GitHub commit ${{ github.sha }}"
