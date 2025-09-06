@@ -1,0 +1,24 @@
+name: Update Kaggle Dataset
+
+on:
+  push:
+    branches: [ main, master ]  # Trigger on pushes to main/master
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  update-dataset:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Update Kaggle Dataset
+      uses: ashishpatel26/kaggle-dataset-uploader@master
+      with:
+        kaggle-username: ${{ secrets.KAGGLE_USERNAME }}
+        kaggle-key: ${{ secrets.KAGGLE_KEY }}
+        dataset-slug: vader773/streetfighters-rl-code
+        dataset-folder: .
+        public: false
+        convert-to-csv: false
+        delete-old-versions: false

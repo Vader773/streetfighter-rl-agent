@@ -85,7 +85,7 @@ def optimize_agent(trial):
         env.close()
 
         SAVE_PATH = os.path.join(OPT_DIR, 'trial_{}_best_model'.format(trial.number)) # Saved to our path OPT_DIR, and then formatted name such that trial number is put in place of {}
-        model.save(SAVE_PATH, include_env=True) # IMP: Saves our model. Include env includes our obs/action space for later reloading the model.
+        model.save(SAVE_PATH) # IMP: Saves our model. 
 
         if VERBOSE:
             print(f" Trial: {trial.number + 1}")
