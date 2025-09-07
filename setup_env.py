@@ -46,9 +46,19 @@ class StreetFighter(Env): #Passed base environment (Env) to custom environment
         #----------FRAME DELTA-----------
         #frame delta = current frame - previous frame
         self.previous_frame = obs #Lets set previous preprocessed frame to initial frame for now 
+        
+        # Taking one dummy action which does nothing to access info and get current player and enemy health to initialise in reset
+        dummy_action = [0] * self.action_space.n # No actions taken
+        _, _, _, info = self.game.step(dummy_action)
 
-        # We want the CHANGE IN SCORE for our reward function, but info only gives current score. For now, lets first setup our score variable
-        self.score = 0
+        self.health = info['health']
+        self.enemy_health = info['enemy_health']
+
+        self.max_health = info['health']
+        self.max_enemy_health = info['enemy_health']
+
+        self.round_over = False
+
         return obs
     
     def preprocess(self, observation): # This function preprocesses the observation (game frame) to make it suitable for our agent
@@ -78,8 +88,36 @@ class StreetFighter(Env): #Passed base environment (Env) to custom environment
 
         #===========REWARD FUNCTION=============
         # We can get game score from info dictionary
-        reward = info['score'] - self.score # This sets reward to the CHANGE in score (current score - previous score)
-        self.score = info['score'] # This updates the score to the current score for the next step (cumalitively calculates score)
+
+        # For round reset
+        if info['health'] > self.health and info['enemy_health'] > self.enemy_health:
+            # Defining max health for progressive round rewarding
+            self.max_health = info['health']
+            self.max_enemy_health = info['enemy_health']
+            # Reseting the other info
+            self.health = info['health']
+            self.enemy_health = info['enemy_health']
+            self.round_over = False
+            return frame_delta, 0, done, info # 0 for reward for reset
+
+        # If round is over, no reward
+        if self.round_over:
+            return frame_delta, 0, done, info
+        
+        if not self.round_over:
+            # Main reward function
+            reward = ((self.enemy_health - info['enemy_health']) * 10) - ((self.health - info['health']) * 10) # This sets reward to the CHANGE in enemy health - change in player health
+
+            # Big reward for win and big penalty for loss, but if both end up with 0 health (Double KO or round reset), the no reward
+            if info['health'] <= 0 or info['enemy_health'] <= 0:
+                terminal_reward = round(((info['health'] - info['enemy_health']) / self.max_health) * 1000, 2)
+                reward += terminal_reward
+                self.round_over = True
+            else:
+                reward += 0
+
+        self.enemy_health = info['enemy_health'] # This now updates the enemy health info stored to the new enemy health of the player in game
+        self.health = info['health'] # Same for this
 
         return frame_delta, reward, done, info
     
@@ -92,6 +130,14 @@ class StreetFighter(Env): #Passed base environment (Env) to custom environment
 
 #-----------------TESTING OUR CUSTOM ENVIRONMENT-----------------
 env = StreetFighter() # Creates an instance of our custom environment (No output means no error!)
+
+obs = env.reset()      # reset environment to get initial frame
+action = env.action_space.sample()  # take a random action
+obs, reward, done, info = env.step(action)  # step once
+print(info)  # Now this will work
+
 print(env.observation_space.shape)
 print(env.action_space.sample())
 env.close()
+
+# TODO: PROPER REWARD FUNCTION

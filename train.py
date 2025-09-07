@@ -36,7 +36,7 @@ study = optuna.load_study(study_name="streetfighter", storage=storage)
 
 model_params = study.best_params
 print(model_params)
-model_params['n_steps'] = 2304 #ALWAYS set n_steps to closest multiple of 64
+model_params['n_steps'] = 2304 # ALWAYS set n_steps to closest multiple of 64
 model_params['learning_rate'] = 5e-7
 print(model_params)
 
@@ -53,6 +53,6 @@ model.set_parameters(os.path.join(OPT_DIR, 'trial_3_best_model.zip'))
 
 model.learn(total_timesteps=5000000, callback=callback) # Use callback that we created
 
-model.save(OPT_DIR, "train_3_final_model.zip")
+model.save(os.path.join(CHECKPOINT_DIR, "train_3_final_model"))
 
 # If we need tensorboard, open new terminal and do cd logs --> tensorboard --logdir=.

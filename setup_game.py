@@ -20,18 +20,23 @@ print(env.action_space) #Shows action space, which is 12 in this case (2^12 = 40
 #-------------TEST GAME LOOP-----------------
 obs = env.reset() # Resets env and returns initial observation
 done=False # Tells us if we have died in game or game is finished, so set to false initially
+total_reward = 0
 for game in range(1): # Loop through ONE game
     while not done: #Gonna loop through until we die
         if done:
             obs = env.reset() #Resets game if we die
         env.render() #Renders the game window
         obs, reward, done, info = env.step(env.action_space.sample()) # We take a sample random action in the game
+        total_reward += reward
         # obs is observation after taking action, reward is the prevbuilt reward function to give reward, info gives valuable information and for step we tell the agent what to do after check obs
-        time.sleep(0.0025) # Sleep to slow down game a bit so its not too fast when rendering
-        if reward > 0:
+        time.sleep(0.01) # Sleep to slow down game a bit so its not too fast when rendering
+        if reward != 0:
             print("--------------------")
             print("Current Game Score: ", info['score'])
+            print("Enemy Health:", info['enemy_health'])
+            print("Player Health:", info['health'])
             print("Model Reward: ", reward)
+            print("Total Model Reward: ", total_reward)
 
 
 env.close() # Close the env after use to avoid clashes
