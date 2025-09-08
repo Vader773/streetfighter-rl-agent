@@ -8,7 +8,7 @@ CONFIG = {
 
 try:
     from config import CONFIG as EXTERNAL_CONFIG
-    CONFIG.update[EXTERNAL_CONFIG]
+    CONFIG.update(EXTERNAL_CONFIG)
     print(" External config found and overwritten")
 except ImportError:
     print(" Using default config cos we are prolly in local")
