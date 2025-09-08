@@ -23,5 +23,3 @@ class TrainAndLoggingCallback(BaseCallback):
             self.model.save(model_path)
         
         return True
-
-
