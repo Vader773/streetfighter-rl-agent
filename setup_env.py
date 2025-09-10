@@ -83,8 +83,11 @@ class StreetFighter(Env): #Passed base environment (Env) to custom environment
         obs = self.preprocess(obs)
 
         #===========FRAME DELTA================
-        frame_delta = obs - self.previous_frame # This calculates the frame delta (current frame - previous frame)
-        self.previous_frame = obs #So that when we take our NEXT step, we have the previous frame set to the current frame
+        # frame_delta = obs - self.previous_frame # This calculates the frame delta (current frame - previous frame)
+        # self.previous_frame = obs #So that when we take our NEXT step, we have the previous frame set to the current frame
+
+        # Maybe its better to just pass the normall obs to the ai as frame delta isn't giving much info to the ai at all
+        frame_delta = obs
 
         #===========REWARD FUNCTION=============
         # We can get game score from info dictionary
