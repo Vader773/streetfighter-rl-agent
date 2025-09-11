@@ -86,8 +86,8 @@ if not INCREMENTAL_TRAINING:
     model_params = trial_4.params.copy()  # Use .copy() to avoid modifying original
     print("Original Trial 4 params:", model_params)
 
-    model_params['n_steps'] = 2368  # Set to closest multiple of 64
-    model_params['learning_rate'] = 5e-7  # Override learning rate
+    model_params['n_steps'] = 5318  # Set to closest multiple of 64
+    model_params['learning_rate'] = 3e-7  # Override learning rate
     print("Modified params:", model_params)
 
     model = PPO('CnnPolicy', env, tensorboard_log=LOG_DIR, verbose=1, **model_params) 
