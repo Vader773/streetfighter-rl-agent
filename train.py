@@ -78,13 +78,13 @@ if VERBOSE:
 # study = joblib.load('ppo_study.pkl')
 
 if not INCREMENTAL_TRAINING:
-    # Get trial 27 parameters (4th best model)
-    trial_27 = next((trial for trial in study.trials if trial.number == 27), None)
-    if trial_27 is None:
-        raise ValueError("Trial 27 not found!")
+    # Get Trial 4 parameters (4th best model)
+    trial_4 = next((trial for trial in study.trials if trial.number == 4), None)
+    if trial_4 is None:
+        raise ValueError("Trial 4 not found!")
 
-    model_params = trial_27.params.copy()  # Use .copy() to avoid modifying original
-    print("Original Trial 27 params:", model_params)
+    model_params = trial_4.params.copy()  # Use .copy() to avoid modifying original
+    print("Original Trial 4 params:", model_params)
 
     model_params['n_steps'] = 2368  # Set to closest multiple of 64
     model_params['learning_rate'] = 5e-7  # Override learning rate
@@ -93,7 +93,7 @@ if not INCREMENTAL_TRAINING:
     model = PPO('CnnPolicy', env, tensorboard_log=LOG_DIR, verbose=1, **model_params) 
 
     # Load weights into this new model
-    model.set_parameters(os.path.join(OPT_DIR, 'trial_27_best_model.zip'))
+    model.set_parameters(os.path.join(OPT_DIR, 'trial_4_best_model.zip'))
 
     model.learn(total_timesteps=TOTAL_TIMESTEPS, callback=callback, reset_num_timesteps=False) # Use callback that we created
 
