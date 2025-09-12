@@ -14,7 +14,7 @@ env = DummyVecEnv([lambda: env]) # What does this do??
 env = VecFrameStack(env, 4, channels_order='last') # From our env, we are gonna stack 4 diffrerent frames together, and as we had setup channels we can setup the order of those preprocessed 'channels' frames to last (i think?)
 
 
-model = PPO.load('./opt/trial_4_best_model.zip', env=env) # Load the TRAINED checkpoint
+model = PPO.load('./train/best_2250000_model.zip', env=env) # Load the TRAINED checkpoint
 
 
 # mean_reward, _ = evaluate_policy(model, env, n_eval_episodes=1, render=True )

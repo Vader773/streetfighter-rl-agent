@@ -3,7 +3,7 @@ CONFIG = {
     'CHECK_FREQ' : 10000,
     'TOTAL_TIMESTEPS': 10000,
     'VERBOSE' : False,
-    'INCREMENTAL_TRAINING': False
+    'INCREMENTAL_TRAINING': True
 }
 
 try:
@@ -105,7 +105,7 @@ if not INCREMENTAL_TRAINING:
 
 if INCREMENTAL_TRAINING:
     # WHEN DOING INCREMENTAL TRAINING
-    model = PPO.load('./train/train_5_final_model.zip', env=env)
+    model = PPO.load('./train/best_2250000_model.zip', env=env)
     model.learn(total_timesteps=TOTAL_TIMESTEPS, callback=callback, reset_num_timesteps=False) # Use callback that we created
 
 model.save(os.path.join(CHECKPOINT_DIR, "train_5_final_model"))
